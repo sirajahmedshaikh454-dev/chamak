@@ -121,3 +121,11 @@ test('the vocabulary is varied: many seeds make many different layouts', () => {
   for (let s = 1; s <= 60; s++) { const m = gen({ seed: s }).meta; sigs.add([m.petals, m.lattice, m.band2, m.flowers].join('/')); }
   assert.ok(sigs.size >= 20, `only ${sigs.size} distinct layouts in 60 seeds`);
 });
+
+test('the flower row clears both the medallion and the banner in every format and seed', () => {
+  for (const f of Object.keys(C.FORMATS)) for (let s = 1; s <= 60; s++) {
+    const L = gen({ seed: s, format: f }).meta.layout;
+    assert.ok(L.flowerTop >= L.medBottom - 0.5, `${f} seed ${s}: flowers start at ${L.flowerTop}, medallion ends at ${L.medBottom}`);
+    assert.ok(L.flowerBottom <= L.bannerTop + 0.5, `${f} seed ${s}: flowers end at ${L.flowerBottom}, banner starts at ${L.bannerTop}`);
+  }
+});

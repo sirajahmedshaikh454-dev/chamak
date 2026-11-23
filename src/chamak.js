@@ -125,7 +125,7 @@
     }));
 
     // medallion
-    const cx = W / 2, cy = fy + fh * 0.4, R = Math.min(fw * 0.34, fh * 0.27);
+    const cx = W / 2, cy = fy + fh * 0.38, R = Math.min(fw * 0.34, fh * 0.26);
     const med = el('g', { id: 'medallion' });
     med.kids.push(circle(cx, cy, R * 1.1, fr(0), p, 7 * u));
     for (let i = 0; i < 36; i++) { const a = (i / 36) * TAU; med.kids.push(el('circle', { cx: cx + Math.cos(a) * R * 1.03, cy: cy + Math.sin(a) * R * 1.03, r: 5 * u, fill: 'url(#glit)', stroke: p.dark, 'stroke-width': 2 * u })); }
@@ -165,10 +165,11 @@
       kids.push(el('g', { 'data-corner': i, transform: `translate(${n1(x)} ${n1(y)}) scale(${sx} ${sy})` }, fan.kids)));
 
     // a row of flowers
-    const fy2 = cy + R * 1.28 + fh * 0.03, fr2 = Math.min(fw / (flowers * 2.6), fh * 0.045);
+    const bannerTop = fy + fh * 0.76, medBottom = cy + R * 1.1;
+    const spacing = (fw * 0.62) / Math.max(1, flowers - 1), fy2 = (medBottom + bannerTop) / 2, fr2 = Math.min(spacing * 0.46, (bannerTop - medBottom) * 0.36);     // flowers sit midway and never overlap each other or the banner
     const row = el('g', { id: 'flowers' });
     for (let i = 0; i < flowers; i++) {
-      const x = cx + (i - (flowers - 1) / 2) * (fw * 0.62 / Math.max(1, flowers - 1)), g = el('g', { 'data-x': n1(x) });
+      const x = cx + (i - (flowers - 1) / 2) * spacing, g = el('g', { 'data-x': n1(x) });
       for (let k = 0; k < 6; k++) { const a = (k / 6) * TAU; g.kids.push(circle(x + Math.cos(a) * fr2 * 0.62, fy2 + Math.sin(a) * fr2 * 0.62, fr2 * 0.42, p.petals[(k + i) % 2 === 0 ? 1 : 0], p, 3 * u)); }
       g.kids.push(circle(x, fy2, fr2 * 0.34, p.accent, p, 3 * u));
       row.kids.push(g);
@@ -176,7 +177,7 @@
     kids.push(row);
 
     // the lettering banner
-    const bw = fw * 0.86, bh = fh * 0.12, bx = cx - bw / 2, by = fy + fh * 0.76, tail = bh * 0.38, notch = bh * 0.3;
+    const bw = fw * 0.86, bh = fh * 0.12, bx = cx - bw / 2, by = bannerTop, tail = bh * 0.38, notch = bh * 0.3;
     const banner = fr(3);
     kids.push(path(`M${n1(bx)},${n1(by)} H${n1(bx + bw)} L${n1(bx + bw + tail)},${n1(by + bh / 2)} L${n1(bx + bw)},${n1(by + bh)} H${n1(bx)} L${n1(bx - tail)},${n1(by + bh / 2)} Z`, banner, p, 7 * u));
     kids.push(path(`M${n1(bx + notch)},${n1(by + bh * 0.12)} H${n1(bx + bw - notch)} M${n1(bx + notch)},${n1(by + bh * 0.88)} H${n1(bx + bw - notch)}`, 'none', p, 3 * u));
@@ -191,6 +192,7 @@
       const sfs = Math.max(18, Math.min(bh * 0.34, (bw * 0.9) / (Math.max(6, sub.length) * 0.58)));
       kids.push(el('text', Object.assign({}, txtAttr, { id: 'sub', y: by + bh + sfs * 1.6, 'font-size': sfs, 'font-weight': 700, fill: readable(p.bg, p), stroke: 'none', 'stroke-width': 0, 'paint-order': 'normal' }), [sub]));
     }
+    meta.layout = { medBottom, flowerTop: fy2 - fr2 * 1.04, flowerBottom: fy2 + fr2 * 1.04, bannerTop };
     meta.textColor = ink; meta.bannerColor = banner; meta.contrast = Math.round(contrast(banner, ink) * 100) / 100;
     return { svg: ser(scene), width: W, height: H, meta, scene };
   }

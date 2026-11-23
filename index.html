@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chamak</title>
+<meta name="description" content="A generative truck-art studio: type a name, shuffle, download your own painted-truck poster as PNG or SVG.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d62828'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23fcbf49' stroke='%23141010' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%2312706a'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f5efe3;--card:#fffaf0;--ink:#231a14;--mute:#6c5d50;--line:#dfd2bd;--accent:#c1121f;--accent-ink:#fff6ec;--shadow:0 2px 3px rgba(35,26,20,.08),0 10px 28px rgba(35,26,20,.08)}
+@media (prefers-color-scheme:dark){:root{--bg:#151110;--card:#201a17;--ink:#f3e8d6;--mute:#b3a28c;--line:#3a2f28;--accent:#ff6b4a;--accent-ink:#1a0a05;--shadow:none}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:1120px;margin:0 auto;padding:22px 16px 64px}
+h1{font:700 2.2rem/1 Georgia,"Times New Roman",serif;margin:0;letter-spacing:.02em}
+.sub{color:var(--mute);margin:4px 0 18px;max-width:60ch}
+.grid{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+.grid>*{min-width:0}
+@media(min-width:900px){.grid{grid-template-columns:minmax(0,1fr) 340px;align-items:start}}
+.stage{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow);display:flex;justify-content:center;align-items:center;min-height:300px}
+.stage img{display:block;max-width:100%;max-height:78vh;height:auto;width:auto;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+label.l{display:block;font-size:.85rem;font-weight:650;margin:12px 0 4px}
+label.l:first-child{margin-top:0}
+input[type=text],select{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:9px 11px;min-height:44px;font:inherit}
+input[type=range]{width:100%;accent-color:var(--accent)}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;min-height:44px}
+button.big{width:100%;background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700;font-size:1.05rem;min-height:52px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sw{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sw button{padding:6px;min-height:48px;display:flex;flex-direction:column;gap:4px;align-items:center;font-size:.78rem}
+.sw button[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.chips{display:flex;gap:3px;width:100%;height:14px;border-radius:4px;overflow:hidden;border:1px solid rgba(0,0,0,.4)}
+.chips i{flex:1}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1}
+.hist{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;margin-top:6px}
+.hist button{flex:0 0 auto;padding:0;min-height:0;border-radius:6px;overflow:hidden;line-height:0;border:2px solid var(--line)}
+.hist button[aria-current=true]{border-color:var(--accent)}
+.hist img{height:92px;width:auto;display:block}
+.hint{color:var(--mute);font-size:.85rem;margin:8px 0 0}
+.msg{min-height:1.4em;color:var(--mute);font-size:.88rem;margin-top:8px}
+footer{margin-top:22px;color:var(--mute);font-size:.84rem}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Chamak</h1>
+  <p class="sub">A truck-art studio. Type a name, shuffle until a poster feels like yours, and download it. Every poster is drawn from a seed, so a link brings back exactly the same one.</p>
+  <div class="grid">
+    <section class="stage" aria-label="Your poster"><img id="art" alt="Generated truck-art poster"></section>
+    <section class="panel" aria-label="Controls">
+      <label class="l" for="text">Name or slogan (large lettering)</label>
+      <input type="text" id="text" maxlength="40" value="Siraj">
+      <label class="l" for="sub">Small line</label>
+      <input type="text" id="sub" maxlength="60" value="Karachi to Khyber">
+      <label class="l" id="pal-l">Palette</label>
+      <div class="sw" id="pal" role="group" aria-labelledby="pal-l"></div>
+      <label class="l" for="fmt">Shape</label>
+      <select id="fmt"><option value="portrait">Portrait poster (3:4)</option><option value="landscape">Landscape (4:3)</option><option value="square">Square</option><option value="phone">Phone wallpaper</option></select>
+      <label class="l" for="pet">Medallion petals</label>
+      <select id="pet"><option value="0">Surprise me</option><option>8</option><option>10</option><option>12</option><option>14</option><option>16</option></select>
+      <label class="l" for="den">Pattern density</label>
+      <input type="range" id="den" min="0.6" max="1.6" step="0.1" value="1">
+      <div class="row" style="margin-top:16px"><button class="big" id="shuf" type="button">Shuffle (space)</button></div>
+      <div class="row"><button id="png" type="button">Download PNG</button><button id="svg" type="button">Download SVG</button></div>
+      <div class="row"><button id="link" type="button">Copy link</button></div>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+      <label class="l">History (tap to go back)</label>
+      <div class="hist" id="hist"></div>
+      <p class="hint">Urdu works too: type <span dir="rtl" lang="ur">پاکستان زندہ باد</span> in the first box.</p>
+    </section>
+  </div>
+  <footer>Everything runs in this tab. Nothing is uploaded. The art is generated, not copied from any artist; it borrows the visual vocabulary of Pakistan's painted trucks and buses.</footer>
+</div>
+<script src="src/chamak.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>
