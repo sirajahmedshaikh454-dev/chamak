@@ -129,3 +129,35 @@ test('the flower row clears both the medallion and the banner in every format an
     assert.ok(L.flowerBottom <= L.bannerTop + 0.5, `${f} seed ${s}: flowers end at ${L.flowerBottom}, banner starts at ${L.bannerTop}`);
   }
 });
+
+
+// ---- found by an independent review ----
+test('names that are not palettes or formats (constructor, __proto__, toString) fall back to defaults', () => {
+  for (const k of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']) {
+    const g = gen({ palette: k, format: k });
+    assert.ok(wellFormed(g.svg), k);
+    assert.strictEqual(g.meta.palette, 'classic');
+    assert.strictEqual(g.width, 1200);
+  }
+  assert.ok(wellFormed(gen({ palette: 5, format: [1, 2] }).svg));
+});
+
+test('emoji and unpaired surrogates never reach the output, and the cut never splits an emoji', () => {
+  const g = gen({ text: 'a'.repeat(39) + '\u{1F600}' + 'zzz', sub: '\uD83D' + 'x' + '\uDE00' });
+  assert.ok(wellFormed(g.svg));
+  assert.doesNotThrow(() => encodeURIComponent(g.svg));                    // the PNG export path
+  assert.ok(g.svg.includes('\u{1F600}'));
+  assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(g.svg));
+});
+
+test('the corner fans stay clear of the banner in every format and seed', () => {
+  for (const f of Object.keys(C.FORMATS)) for (let s = 1; s <= 40; s++) {
+    const L = gen({ seed: s, format: f }).meta.layout;
+    assert.ok(L.fanTop >= L.bannerBottom - 0.5, `${f} seed ${s}: fans start at ${L.fanTop}, banner ends at ${L.bannerBottom}`);
+  }
+});
+
+test('all-capital names get a smaller font than lower-case names of the same length', () => {
+  const size = (t) => parseFloat(gen({ text: t }).svg.match(/<text id="title"[^>]*font-size="([\d.]+)"/)[1]);
+  assert.ok(size('WWWWWWWWWWWWWWWWWWWWWWWW') < size('wwwwwwwwwwwwwwwwwwwwwwww'));
+});

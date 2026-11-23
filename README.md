@@ -19,7 +19,7 @@ The art is generated from rules, not copied from any artist. It borrows a tradit
 
 ## How I know it works (measured)
 
-The engine is pure, so it is tested without a browser (`npm test`, 15 tests, Node 18 or newer):
+The engine is pure, so it is tested without a browser (`npm test`, 19 tests, Node 18 or newer):
 
 - **Deterministic**: the same seed gives byte-identical output; different seeds differ.
 - **Always valid**: every palette and format gives well-formed SVG under 600 KB, including for seeds 0, negative and huge.
@@ -52,7 +52,7 @@ tools/serve.js   tiny static server (npm run serve)
 
 **Method.** Start from the question "what would you actually want to make and share?" rather than "what checks something". Build the engine as pure functions so the rules can be proven by tests (determinism, symmetry, escaping, contrast), then look at the output with my own eyes, many seeds across palettes, formats and scripts, because art has failure modes tests do not catch. Each step was committed and pushed after the tests passed.
 
-**Skills and tools.** Claude Code; the built-in browser for visual inspection (contact sheets of several seeds), real download verification (capturing the file the button produces and decoding it), and phone and dark-mode checks; an independent read-only review subagent that attacked the engine and page with hostile text, hash values and extreme settings; the `ponytail` style (no dependencies, no build, smallest working design).
+**Skills and tools.** Claude Code; the built-in browser for visual inspection (contact sheets of several seeds), real download verification (capturing the file the button produces and decoding it), and phone and dark-mode checks; an independent read-only review subagent that attacked the engine and page with hostile text, hash values and extreme settings. It confirmed 7 problems, all fixed with tests: a shared link such as `#palette=constructor` crashed the app (inherited object keys were treated as palettes), an emoji cut in half at the 40-character limit broke PNG export, the banner covered part of the corner fans in landscape and square, all-capital names could overflow the banner, odd file names, Space handling with modifier keys, and history de-duplication; the `ponytail` style (no dependencies, no build, smallest working design).
 
 **Choices worth defending.** Corner fans are one shape drawn four times with mirror transforms, so symmetry cannot drift. The user's text can never become markup. The whole state lives in the URL, so a poster is reproducible and shareable without any server.
 

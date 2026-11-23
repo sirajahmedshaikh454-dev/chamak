@@ -39,7 +39,7 @@
   // ---------- a tiny scene graph ----------
   const n1 = (v) => (Math.round(v * 10) / 10).toString();
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const clean = (s) => String(s == null ? '' : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '').replace(/\s+/g, ' ').trim();
+  const clean = (s) => String(s == null ? '' : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '').replace(/\s+/g, ' ').trim();
   const el = (tag, attrs, kids) => ({ tag, attrs: attrs || {}, kids: kids || [] });
   function ser(node) {
     if (typeof node === 'string') return esc(node);
@@ -75,9 +75,11 @@
     params = params || {};
     const seed = (params.seed >>> 0) || 1;
     const r = rng(seed);
-    const p = PALETTES[params.palette] || PALETTES.classic;
-    const [W, H] = FORMATS[params.format] || FORMATS.portrait;
-    const text = clean(params.text).slice(0, 40) || 'CHAMAK', sub = clean(params.sub).slice(0, 60);
+    const own = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);       // 'constructor' and '__proto__' are not palettes
+    const p = own(PALETTES, params.palette) ? PALETTES[params.palette] : PALETTES.classic;
+    const [W, H] = own(FORMATS, params.format) ? FORMATS[params.format] : FORMATS.portrait;
+    const cut = (s, n) => Array.from(clean(s)).slice(0, n).join('');                                   // cut by character, never inside an emoji pair
+    const text = cut(params.text, 40) || 'CHAMAK', sub = cut(params.sub, 60);
     const N = [8, 10, 12, 14, 16].includes(params.petals) ? params.petals : pick(r, [8, 10, 12, 14, 16]);
     const lattice = pick(r, ['diamond', 'dots', 'cross']), band2 = pick(r, ['chain', 'beads', 'zigzag']);
     const rot = Math.floor(r() * 4), fr = (i) => p.frames[(i + rot) % 4];
@@ -91,7 +93,7 @@
     // frames: four nested bands, then the field
     const t1 = 34 * u, t2 = 58 * u, t3 = 44 * u, pad = t1 + t2 + t3;
     [[0, fr(0)], [t1, fr(1)], [t1 + t2, fr(2)], [pad, p.bg]].forEach(([i, c]) => kids.push(el('rect', Object.assign({ x: i, y: i, width: W - 2 * i, height: H - 2 * i, fill: c }, OUT(p, 6 * u)))));
-    const meta = { seed, petals: N, lattice, band2, flowers, palette: params.palette in PALETTES ? params.palette : 'classic', width: W, height: H };
+    const meta = { seed, petals: N, lattice, band2, flowers, palette: own(PALETTES, params.palette) ? params.palette : 'classic', width: W, height: H };
 
     // band 1: glitter dots (a radial gradient gives each a little shine)
     defs.kids.push(el('radialGradient', { id: 'glit', cx: '35%', cy: '35%', r: '70%' }, [el('stop', { offset: '0', 'stop-color': '#ffffff' }), el('stop', { offset: '1', 'stop-color': p.light })]));
@@ -154,7 +156,7 @@
     kids.push(med);
 
     // corner fans: drawn once for the top-left and mirrored, so the poster is symmetric by construction
-    const fanR = Math.min(fw, fh) * 0.2;
+    const fanR = Math.min(fw * 0.14, fh * 0.12);                       // small enough to stay clear of the banner above it
     const fan = el('g', {}, []);
     for (let k = 4; k >= 1; k--) {
       const rr = (fanR * k) / 4;
@@ -181,7 +183,7 @@
     const banner = fr(3);
     kids.push(path(`M${n1(bx)},${n1(by)} H${n1(bx + bw)} L${n1(bx + bw + tail)},${n1(by + bh / 2)} L${n1(bx + bw)},${n1(by + bh)} H${n1(bx)} L${n1(bx - tail)},${n1(by + bh / 2)} Z`, banner, p, 7 * u));
     kids.push(path(`M${n1(bx + notch)},${n1(by + bh * 0.12)} H${n1(bx + bw - notch)} M${n1(bx + notch)},${n1(by + bh * 0.88)} H${n1(bx + bw - notch)}`, 'none', p, 3 * u));
-    const fs = Math.max(24, Math.min(bh * 0.72, (bw * 0.9) / (Math.max(3, text.length) * 0.66)));
+    const fs = Math.max(24, Math.min(bh * 0.72, (bw * 0.9) / (Math.max(3, text.length) * (0.62 + 0.3 * (text.replace(/[^A-Z]/g, '').length / Math.max(1, text.length))))));       // capitals are wider
     const ink = readable(banner, p), halo = ink === p.light ? p.dark : p.light;
     const rtl = /[֐-ࣿ]/.test(text);
     const txtAttr = { x: cx, y: by + bh / 2 + fs * 0.34, 'text-anchor': 'middle', 'font-size': fs, 'font-weight': 900, 'font-family': "'Noto Nastaliq Urdu','Jameel Noori Nastaleeq','Segoe UI','Arial Black','Impact',sans-serif", 'paint-order': 'stroke', 'stroke-linejoin': 'round' };
@@ -192,7 +194,7 @@
       const sfs = Math.max(18, Math.min(bh * 0.34, (bw * 0.9) / (Math.max(6, sub.length) * 0.58)));
       kids.push(el('text', Object.assign({}, txtAttr, { id: 'sub', y: by + bh + sfs * 1.6, 'font-size': sfs, 'font-weight': 700, fill: readable(p.bg, p), stroke: 'none', 'stroke-width': 0, 'paint-order': 'normal' }), [sub]));
     }
-    meta.layout = { medBottom, flowerTop: fy2 - fr2 * 1.04, flowerBottom: fy2 + fr2 * 1.04, bannerTop };
+    meta.layout = { medBottom, flowerTop: fy2 - fr2 * 1.04, flowerBottom: fy2 + fr2 * 1.04, bannerTop, bannerBottom: by + bh, fanTop: fy + fh - fanR };
     meta.textColor = ink; meta.bannerColor = banner; meta.contrast = Math.round(contrast(banner, ink) * 100) / 100;
     return { svg: ser(scene), width: W, height: H, meta, scene };
   }

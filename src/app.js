@@ -9,10 +9,11 @@
     try {
       const p = new URLSearchParams(location.hash.slice(1));
       if (p.has('seed')) state.seed = Math.max(1, Math.floor(+p.get('seed')) || 1);
-      if (p.has('text')) state.text = p.get('text').slice(0, 40);
-      if (p.has('sub')) state.sub = p.get('sub').slice(0, 60);
-      if (C.PALETTES[p.get('palette')]) state.palette = p.get('palette');
-      if (C.FORMATS[p.get('format')]) state.format = p.get('format');
+      const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+      if (p.has('text')) state.text = Array.from(p.get('text')).slice(0, 40).join('');
+      if (p.has('sub')) state.sub = Array.from(p.get('sub')).slice(0, 60).join('');
+      if (own(C.PALETTES, p.get('palette') || '')) state.palette = p.get('palette');
+      if (own(C.FORMATS, p.get('format') || '')) state.format = p.get('format');
       if ([0, 8, 10, 12, 14, 16].includes(+p.get('petals'))) state.petals = +p.get('petals');
       if (+p.get('density') >= 0.6 && +p.get('density') <= 1.6) state.density = +p.get('density');
     } catch (e) { /* a bad hash just means defaults */ }
@@ -34,8 +35,8 @@
   // ---- history strip ----
   const past = [];
   function addHistory() {
-    const snap = Object.assign({}, state);
-    if (past.length && JSON.stringify(past[0]) === JSON.stringify(snap)) return;
+    const snap = Object.assign({}, state), key = (s) => JSON.stringify(Object.assign({}, s, { format: '' }));        // thumbnails are all portrait, so format alone is not a new poster
+    if (past.length && key(past[0]) === key(snap)) { past[0] = snap; return; }
     past.unshift(snap); if (past.length > 12) past.pop();
     drawHistory();
   }
@@ -48,7 +49,7 @@
       img.addEventListener('load', () => URL.revokeObjectURL(img.src), { once: true });
       b.appendChild(img);
       if (i === 0) b.setAttribute('aria-current', 'true');
-      b.addEventListener('click', () => { Object.assign(state, s); syncControls(); render(false); });
+      b.addEventListener('click', () => { Object.assign(state, s); syncControls(); render(false); box.querySelectorAll('button').forEach((x) => x.removeAttribute('aria-current')); b.setAttribute('aria-current', 'true'); });
       box.appendChild(b);
     });
   }
@@ -75,11 +76,11 @@
   $('pet').addEventListener('change', (e) => { state.petals = +e.target.value; render(true); });
   $('den').addEventListener('input', (e) => { state.density = +e.target.value; later(() => render(true)); });
   $('shuf').addEventListener('click', shuffle);
-  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && !e.target.matches('input,select,textarea,button')) { e.preventDefault(); shuffle(); } });
+  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && !e.isComposing && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.matches('input,select,textarea,button,a,[contenteditable]')) { e.preventDefault(); shuffle(); } });
 
   // ---- downloads ----
   const msg = (t) => { $('msg').textContent = t; };
-  const fileName = (ext) => 'chamak-' + (state.text || 'poster').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 24).toLowerCase() + '-' + state.seed + '.' + ext;
+  const fileName = (ext) => 'chamak-' + ((state.text || '').replace(/[^\p{L}\p{M}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 24).toLowerCase() || 'poster') + '-' + state.seed + '.' + ext;
   function save(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
   $('svg').addEventListener('click', () => { save(new Blob([current.svg], { type: 'image/svg+xml' }), fileName('svg')); msg('SVG saved.'); });
   $('png').addEventListener('click', () => {
@@ -90,14 +91,14 @@
       c.toBlob((b) => { if (!b) { msg('PNG export failed: try SVG.'); return; } save(b, fileName('png')); msg(`PNG saved (${c.width} x ${c.height}).`); }, 'image/png');
     };
     img.onerror = () => msg('PNG export failed: try SVG.');
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(current.svg);
+    try { img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(current.svg); } catch (e) { msg('PNG export failed: try SVG.'); }
   });
   $('link').addEventListener('click', () => {
     const url = location.href;
     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => msg('Link copied. It recreates this exact poster.'), () => msg('Copy failed: copy the address bar instead.'));
   });
 
-  window.addEventListener('hashchange', () => { fromHash(); syncControls(); render(true); });          // a pasted link in an open tab
+  window.addEventListener('hashchange', () => { if (location.hash === toHash()) return; fromHash(); syncControls(); render(true); });          // a pasted link in an open tab
   fromHash();
   if (!location.hash) state.seed = (Math.random() * 4294967295 >>> 0) || 1;
   syncControls(); render(true);
